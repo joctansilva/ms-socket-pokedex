@@ -1,6 +1,6 @@
 # 💬 Servidor de Chat em Tempo Real com Socket.IO para teste IA Gente Pokedex
 
-Projeto é um servidor para troca de mensagens em tempo real, foi desenvolvido desenvolvido com **Node.js** e **Socket.IO**.
+Projeto é um servidor para troca de mensagens em tempo real, foi desenvolvido desenvolvido com **Node.js** e **Socket.IO** seu deploy foi realizado no Render [URL Do Deploy](https://ms-socket-pokedex.onrender.com).
 
 Permite a conexao de multiplos usuários, e permite que eles enviem mensagens e recebam notificações de entrada e saída no chat.
 
