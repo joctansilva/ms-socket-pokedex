@@ -1,13 +1,3 @@
-import Home from '@/presentation/pages/Home/home';
-import React from 'react';
-
-const MakeHome = () => {
-  return <Home />;
-};
-
-export default MakeHome;
-
-
 import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import MakeHome from '../factories/pages/makeHome';
@@ -20,11 +10,14 @@ import MakeBankDetails from '../factories/pages/makeBankDetails';
 import MakeBankParameter from '../factories/pages/makeBankParameter';
 import MakeSearchSlipGenerated from '../factories/pages/makeSearchSlipGenerated';
 import MakeSearchSlipExternalCanceled from '../factories/pages/makeSearchSlipExternalCanceled';
+import MakeHomeSlips from '../factories/pages/makeHomeSlips';
+import MakeHomeCardMachines from '../factories/pages/makeHomeCardMachines';
+import MakeMachines from '../factories/pages/cardMachineFees/makeCardMachine';
 
 const router = createBrowserRouter([
   {
     id: 'home',
-    element: <Layout />,
+    element: <Layout navbarTitle="Cockpit de Parametrização" />,
     loader: () => {
       return {
         name: 'home',
@@ -43,8 +36,45 @@ const router = createBrowserRouter([
     errorElement: <Navigate to="/" />,
   },
   {
+    id: 'subhome-slips',
+    element: <Layout navbarTitle="Gestor de Boletos" />,
+    loader: () => {
+      return {
+        name: 'subhome-slips',
+      };
+    },
+    children: [
+      {
+        path: '/gestor-boletos',
+        element: <PublicRoute Component={<MakeHomeSlips />} />,
+      },
+    ],
+    errorElement: <Navigate to="/" />,
+  },
+  {
+    id: 'subhome-machine',
+    element: <Layout navbarTitle="Repasse Aluguel de Maquininhas" />,
+    loader: () => {
+      return {
+        name: 'subhome-machine',
+        hasNavBarItems: true,
+      };
+    },
+    children: [
+      {
+        path: '/repasse-aluguel-maquininhas',
+        element: <PublicRoute Component={<MakeHomeCardMachines />} />,
+      },
+      {
+        path: '/repasse-aluguel-maquininhas/maquininhas',
+        element: <PublicRoute Component={<MakeMachines />} />,
+      },
+    ],
+    errorElement: <Navigate to="/" />,
+  },
+  {
     id: 'main',
-    element: <Layout />,
+    element: <Layout navbarTitle="Gestor de Boletos" navbarItems="billet" />,
     loader: () => {
       return {
         name: 'main',
@@ -94,98 +124,160 @@ const router = createBrowserRouter([
 
 export default router;
 
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import Footer from '../Footer';
+import * as S from './styles';
+import Header from '../Header';
+import Navbar from '../Navbar';
+
+interface Props {
+  navbarTitle: string;
+  navbarItems?: 'machines' | 'billet';
+}
+
+const Layout = ({ navbarTitle, navbarItems }: Props) => {
+  return (
+    <div
+      style={{ display: 'flex', flexDirection: 'column', minHeight: '90vh' }}
+    >
+      <Header />
+      <Navbar navbarTitle={navbarTitle} navbarItems={navbarItems} />
+      <S.Container>
+        <Outlet />
+      </S.Container>
+      <Footer />
+    </div>
+  );
+};
+
+export default Layout;
 
 import React from 'react';
 import * as S from './styles';
-import { Typography } from '@cvccorp-components/chui-react-components';
-import { TNavBarItems } from '@/presentation/components/Navbar';
-import {
-  CreditCard,
-  FileText,
-  Landmark,
-  MonitorDot,
-  SearchIcon,
-  Store,
-} from 'lucide-react';
-import QuickAccess from '@/presentation/components/QuickAccess';
+import { icons, Landmark, MonitorDot, SearchIcon, Store } from 'lucide-react';
+import { Button, Typography } from '@cvccorp-components/chui-react-components';
+import { useLocation, useNavigate, useRouteLoaderData } from 'react-router-dom';
 
-const Home = () => {
-  let quickAcessItems: Omit<TNavBarItems, 'alternativeIcon'>[] = [
-    {
-      label: 'Gestor de Cobranças',
-      path: '/gestor-cobrancas',
-      icon: <FileText size={40} color="#fff" />,
-    },
-    {
-      label: 'Repasse Aluguel Maquininhas',
-      path: '/aluguel-maquininhas',
-      icon: <CreditCard size={40} color="#fff" />,
-    },
-  ];
+export type TNavBarItems = {
+  label: string;
+  path: string;
+  pageGroup?: string;
+  icon: JSX.Element;
+  alternativeIcon: JSX.Element;
+};
 
-  let quickAcessSlipItems: Omit<TNavBarItems, 'alternativeIcon'>[] = [
+export interface IHomeLoaderData {
+  name: string;
+}
+
+export interface IMainLoaderData extends IHomeLoaderData {
+  hasNavBarItems: boolean;
+}
+
+interface Props {
+  navbarTitle: string;
+  navbarItems?: 'machines' | 'billet';
+}
+
+const Navbar = ({ navbarTitle, navbarItems }: Props) => {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  const navBarItemsBillet: TNavBarItems[] = [
     {
       label: 'Unidade de Negócios',
       path: '/cadastro-unidade-de-negocios',
-      icon: <Store size={40} color="#fff" />,
+      pageGroup: 'cadastro-unidade-de-negocios',
+      icon: <Store color="white" />,
+      alternativeIcon: <Store color="#4d4d5e" />,
     },
     {
       label: 'Configurações Bancárias',
       path: '/configuracoes-bancarias/bancos',
-      icon: <Landmark size={40} color="#fff" />,
+      pageGroup: 'configuracoes-bancarias',
+      icon: <Landmark color="white" />,
+      alternativeIcon: <Landmark color="#4d4d5e" />,
     },
     {
       label: 'Cadastro de Sistemas',
       path: '/cadastro-sistemas',
-      icon: <MonitorDot size={40} color="#fff" />,
+      pageGroup: 'cadastro-sistemas',
+      icon: <MonitorDot color="white" />,
+      alternativeIcon: <MonitorDot color="#4d4d5e" />,
     },
     {
       label: 'Consulta de Boletos',
       path: '/consulta-boletos',
-      icon: <SearchIcon size={40} color="#fff" />,
+      pageGroup: 'consulta-boletos',
+      icon: <SearchIcon color="white" />,
+      alternativeIcon: <SearchIcon color="#4d4d5e" />,
+    },
+  ];
+  const navBarItemsMachines: TNavBarItems[] = [
+    {
+      label: 'Maquininhas',
+      path: '/cadastro-unidade-de-negocios',
+      pageGroup: 'maquininhas',
+      icon: <Store color="white" />,
+      alternativeIcon: <Store color="#4d4d5e" />,
+    },
+    {
+      label: 'Cobrança por Franquia',
+      path: '/configuracoes-bancarias/bancos',
+      pageGroup: 'cobranca-por-franquia',
+      icon: <Landmark color="white" />,
+      alternativeIcon: <Landmark color="#4d4d5e" />,
     },
   ];
 
-  let quickAcessCardMachineItems: Omit<TNavBarItems, 'alternativeIcon'>[] = [
-    {
-      label: 'Cadastro de Maquininhas',
-      path: '/cadastro-maquininhas',
-      icon: <Store size={40} color="#fff" />,
-    },
-    {
-      label: 'Consulta de Cobranças Franquias',
-      path: '/consulta-cobrancas-franquias',
-      icon: <Landmark size={40} color="#fff" />,
-    },
-  ];
+  const mainLoaderData = useRouteLoaderData('main') as
+    | IMainLoaderData
+    | undefined;
+
+  const navBarItems =
+    navbarItems === 'billet' ? navBarItemsBillet : navBarItemsMachines;
 
   return (
-    <S.Wrapper>
-      <S.TitleContainer>
-        <Typography
-          variant="headline"
-          scale={6}
-          weight="bold"
-          color="brand.secondary.700"
-        >
-          Acesso Rápido
-        </Typography>
-      </S.TitleContainer>
-      <S.CardContainer>
-        {quickAcessItems.map(item => {
-          return (
-            <QuickAccess
-              key={item.label}
-              label={item.label}
-              path={item.path}
-              icon={item.icon}
-            />
-          );
-        })}
-      </S.CardContainer>
-    </S.Wrapper>
+    <S.NavBarWrapper>
+      <S.NavBarContainer>
+        <>
+          <S.TitleContainer>
+            <Typography
+              variant="headline"
+              weight="bold"
+              style={{
+                fontSize: '32px',
+              }}
+            >
+              {navbarTitle}
+            </Typography>
+          </S.TitleContainer>
+          {mainLoaderData?.hasNavBarItems && (
+            <S.NavBarItemsContainer>
+              {navBarItems.map(item => {
+                const splittedPathName = pathname.split('/');
+                const validation = item.pageGroup === splittedPathName[1];
+                return (
+                  <Button
+                    key={item.label}
+                    variant={validation ? 'filled' : 'text'}
+                    color={validation ? 'secondary' : 'neutral'}
+                    icon={validation ? item.icon : item.alternativeIcon}
+                    onClick={() => navigate(item.path)}
+                  >
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </S.NavBarItemsContainer>
+          )}
+        </>
+      </S.NavBarContainer>
+    </S.NavBarWrapper>
   );
 };
 
-export default Home;
+export default Navbar;
+
 
