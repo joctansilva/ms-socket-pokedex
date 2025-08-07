@@ -1,161 +1,6 @@
 import React from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
-import MakeHome from '../factories/pages/makeHome';
-import Layout from '@/presentation/components/Layout';
-import PublicRoute from '../proxies/publicRoute';
-import MakeRegisterBusinessUnit from '../factories/pages/makeRegisterBusinessUnit';
-import MakeBank from '../factories/pages/makeBank';
-import MakeSystem from '../factories/pages/makeSystem';
-import MakeBankDetails from '../factories/pages/makeBankDetails';
-import MakeBankParameter from '../factories/pages/makeBankParameter';
-import MakeSearchSlipGenerated from '../factories/pages/makeSearchSlipGenerated';
-import MakeSearchSlipExternalCanceled from '../factories/pages/makeSearchSlipExternalCanceled';
-import MakeHomeSlips from '../factories/pages/makeHomeSlips';
-import MakeHomeCardMachines from '../factories/pages/makeHomeCardMachines';
-import MakeMachines from '../factories/pages/cardMachineFees/makeCardMachine';
-
-const router = createBrowserRouter([
-  {
-    id: 'home',
-    element: <Layout navbarTitle="Cockpit de Parametrização" />,
-    loader: () => {
-      return {
-        name: 'home',
-      };
-    },
-    children: [
-      {
-        path: '/',
-        element: <Navigate to="/home" replace />,
-      },
-      {
-        path: '/home',
-        element: <PublicRoute Component={<MakeHome />} />,
-      },
-    ],
-    errorElement: <Navigate to="/" />,
-  },
-  {
-    id: 'subhome-slips',
-    element: <Layout navbarTitle="Gestor de Boletos" />,
-    loader: () => {
-      return {
-        name: 'subhome-slips',
-      };
-    },
-    children: [
-      {
-        path: '/gestor-boletos',
-        element: <PublicRoute Component={<MakeHomeSlips />} />,
-      },
-    ],
-    errorElement: <Navigate to="/" />,
-  },
-  {
-    id: 'subhome-machine',
-    element: <Layout navbarTitle="Repasse Aluguel de Maquininhas" />,
-    loader: () => {
-      return {
-        name: 'subhome-machine',
-        hasNavBarItems: true,
-      };
-    },
-    children: [
-      {
-        path: '/repasse-aluguel-maquininhas',
-        element: <PublicRoute Component={<MakeHomeCardMachines />} />,
-      },
-      {
-        path: '/repasse-aluguel-maquininhas/maquininhas',
-        element: <PublicRoute Component={<MakeMachines />} />,
-      },
-    ],
-    errorElement: <Navigate to="/" />,
-  },
-  {
-    id: 'main',
-    element: <Layout navbarTitle="Gestor de Boletos" navbarItems="billet" />,
-    loader: () => {
-      return {
-        name: 'main',
-        hasNavBarItems: true,
-      };
-    },
-    children: [
-      {
-        path: '/cadastro-unidade-de-negocios',
-        element: <PublicRoute Component={<MakeRegisterBusinessUnit />} />,
-      },
-      {
-        path: '/configuracoes-bancarias',
-        element: <Navigate to="/configuracoes-bancarias/bancos" replace />,
-      },
-      {
-        path: '/configuracoes-bancarias/bancos',
-        element: <PublicRoute Component={<MakeBank />} />,
-      },
-      {
-        path: '/configuracoes-bancarias/bancos/parametros',
-        element: <PublicRoute Component={<MakeBankParameter />} />,
-      },
-      {
-        path: '/cadastro-sistemas',
-        element: <PublicRoute Component={<MakeSystem />} />,
-      },
-      {
-        path: '/configuracoes-bancarias/bancos/detalhes',
-        element: <PublicRoute Component={<MakeBankDetails />} />,
-      },
-      {
-        path: '/consulta-boletos',
-        element: <Navigate to="/consulta-boletos/gerados" replace />,
-      },
-      {
-        path: '/consulta-boletos/gerados',
-        element: <PublicRoute Component={<MakeSearchSlipGenerated />} />,
-      },
-      {
-        path: '/consulta-boletos/externos-cancelados',
-        element: <PublicRoute Component={<MakeSearchSlipExternalCanceled />} />,
-      },
-    ],
-  },
-]);
-
-export default router;
-
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import Footer from '../Footer';
 import * as S from './styles';
-import Header from '../Header';
-import Navbar from '../Navbar';
-
-interface Props {
-  navbarTitle: string;
-  navbarItems?: 'machines' | 'billet';
-}
-
-const Layout = ({ navbarTitle, navbarItems }: Props) => {
-  return (
-    <div
-      style={{ display: 'flex', flexDirection: 'column', minHeight: '90vh' }}
-    >
-      <Header />
-      <Navbar navbarTitle={navbarTitle} navbarItems={navbarItems} />
-      <S.Container>
-        <Outlet />
-      </S.Container>
-      <Footer />
-    </div>
-  );
-};
-
-export default Layout;
-
-import React from 'react';
-import * as S from './styles';
-import { icons, Landmark, MonitorDot, SearchIcon, Store } from 'lucide-react';
+import { Landmark, MonitorDot, SearchIcon, Store } from 'lucide-react';
 import { Button, Typography } from '@cvccorp-components/chui-react-components';
 import { useLocation, useNavigate, useRouteLoaderData } from 'react-router-dom';
 
@@ -173,16 +18,33 @@ export interface IHomeLoaderData {
 
 export interface IMainLoaderData extends IHomeLoaderData {
   hasNavBarItems: boolean;
+  moduleType?: 'billet' | 'machine';
 }
 
 interface Props {
   navbarTitle: string;
-  navbarItems?: 'machines' | 'billet';
 }
 
-const Navbar = ({ navbarTitle, navbarItems }: Props) => {
+const Navbar = ({ navbarTitle }: Props) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+
+  const getLoaderData = () => {
+    if (pathname.startsWith('/repasse-aluguel-maquininhas')) {
+      return useRouteLoaderData('machines-module') as
+        | IMainLoaderData
+        | undefined;
+    }
+    if (
+      pathname.startsWith('/cadastro-unidade-de-negocios') ||
+      pathname.startsWith('/configuracoes-bancarias') ||
+      pathname.startsWith('/cadastro-sistemas') ||
+      pathname.startsWith('/consulta-boletos')
+    )
+      return undefined;
+  };
+
+  const loaderData = getLoaderData();
 
   const navBarItemsBillet: TNavBarItems[] = [
     {
@@ -231,12 +93,19 @@ const Navbar = ({ navbarTitle, navbarItems }: Props) => {
     },
   ];
 
-  const mainLoaderData = useRouteLoaderData('main') as
-    | IMainLoaderData
-    | undefined;
+  const getNavBarItems = () => {
+    if (!loaderData) return [];
+    switch (loaderData.moduleType) {
+      case 'billet':
+        return navBarItemsBillet;
+      case 'machine':
+        return navBarItemsMachines;
+      default:
+        return [];
+    }
+  };
 
-  const navBarItems =
-    navbarItems === 'billet' ? navBarItemsBillet : navBarItemsMachines;
+  const navBarItems = getNavBarItems();
 
   return (
     <S.NavBarWrapper>
@@ -253,7 +122,7 @@ const Navbar = ({ navbarTitle, navbarItems }: Props) => {
               {navbarTitle}
             </Typography>
           </S.TitleContainer>
-          {mainLoaderData?.hasNavBarItems && (
+          {loaderData?.hasNavBarItems && (
             <S.NavBarItemsContainer>
               {navBarItems.map(item => {
                 const splittedPathName = pathname.split('/');
@@ -280,4 +149,150 @@ const Navbar = ({ navbarTitle, navbarItems }: Props) => {
 
 export default Navbar;
 
+import React from 'react';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import MakeHome from '../factories/pages/makeHome';
+import Layout from '@/presentation/components/Layout';
+import PublicRoute from '../proxies/publicRoute';
+import MakeRegisterBusinessUnit from '../factories/pages/makeRegisterBusinessUnit';
+import MakeBank from '../factories/pages/makeBank';
+import MakeSystem from '../factories/pages/makeSystem';
+import MakeBankDetails from '../factories/pages/makeBankDetails';
+import MakeBankParameter from '../factories/pages/makeBankParameter';
+import MakeSearchSlipGenerated from '../factories/pages/makeSearchSlipGenerated';
+import MakeSearchSlipExternalCanceled from '../factories/pages/makeSearchSlipExternalCanceled';
+import MakeHomeSlips from '../factories/pages/makeHomeSlips';
+import MakeHomeCardMachines from '../factories/pages/makeHomeCardMachines';
+import MakeMachines from '../factories/pages/cardMachineFees/makeCardMachine';
+
+const router = createBrowserRouter([
+  {
+    id: 'home',
+    element: <Layout navbarTitle="Cockpit de Parametrização" />,
+    loader: () => {
+      return {
+        name: 'home',
+      };
+    },
+    children: [
+      {
+        path: '/',
+        element: <Navigate to="/home" replace />,
+      },
+      {
+        path: '/home',
+        element: <PublicRoute Component={<MakeHome />} />,
+      },
+    ],
+    errorElement: <Navigate to="/" />,
+  },
+  {
+    id: 'billet-module',
+    element: <Layout navbarTitle="Gestor de Boletos" />,
+    loader: () => {
+      return {
+        name: 'billet-module',
+        hasNavBarItems: true,
+      };
+    },
+    children: [
+      {
+        path: '/gestor-boletos',
+        element: <PublicRoute Component={<MakeHomeSlips />} />,
+      },
+      {
+        path: '/cadastro-unidade-de-negocios',
+        element: <PublicRoute Component={<MakeRegisterBusinessUnit />} />,
+      },
+      {
+        path: '/configuracoes-bancarias',
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/configuracoes-bancarias/bancos" replace />,
+          },
+          { path: 'bancos', element: <PublicRoute Component={<MakeBank />} /> },
+          {
+            path: 'bancos/parametros',
+            element: <PublicRoute Component={<MakeBankParameter />} />,
+          },
+          {
+            path: 'bancos/detalhes',
+            element: <PublicRoute Component={<MakeBankDetails />} />,
+          },
+        ],
+      },
+      {
+        path: '/cadastro-sistemas',
+        element: <PublicRoute Component={<MakeSystem />} />,
+      },
+      {
+        path: '/consulta-boletos',
+        children: [
+          {
+            index: true,
+            element: <Navigate to="/consulta-boletos/gerados" replace />,
+          },
+          {
+            path: 'gerados',
+            element: <PublicRoute Component={<MakeSearchSlipGenerated />} />,
+          },
+          {
+            path: 'externos-cancelados',
+            element: (
+              <PublicRoute Component={<MakeSearchSlipExternalCanceled />} />
+            ),
+          },
+        ],
+      },
+    ],
+    errorElement: <Navigate to="/" />,
+  },
+  {
+    id: 'machine-module',
+    element: <Layout navbarTitle="Repasse Aluguel de Maquininhas" />,
+    loader: () => ({ name: 'machine-module', hasNavBarItems: true }),
+    children: [
+      {
+        path: '/repasse-aluguel-maquininhas',
+        element: <PublicRoute Component={<MakeHomeCardMachines />} />,
+      },
+      {
+        path: '/repasse-aluguel-maquininhas/maquininhas',
+        element: <PublicRoute Component={<MakeMachines />} />,
+      },
+    ],
+    errorElement: <Navigate to="/" />,
+  },
+]);
+
+export default router;
+
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import Footer from '../Footer';
+import * as S from './styles';
+import Header from '../Header';
+import Navbar from '../Navbar';
+
+interface Props {
+  navbarTitle: string;
+}
+
+const Layout = ({ navbarTitle }: Props) => {
+  return (
+    <div
+      style={{ display: 'flex', flexDirection: 'column', minHeight: '90vh' }}
+    >
+      <Header />
+      <Navbar navbarTitle={navbarTitle} />
+      <S.Container>
+        <Outlet />
+      </S.Container>
+      <Footer />
+    </div>
+  );
+};
+
+export default Layout;
 
