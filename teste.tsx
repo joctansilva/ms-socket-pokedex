@@ -3,7 +3,7 @@ import { Control, Controller } from '@cvccorp-components/chui-react-form';
 import React, { ReactNode, useState } from 'react';
 import currency from 'currency.js';
 
-export interface IControlledInput extends Omit<InputProps, 'defaultValue'> {
+export interface IControlledInput extends Omit<InputProps, 'defaultValue' | 'onBlur' | 'onChange'> {
   name: string;
   control?: Control<any>;
   label: string;
@@ -26,18 +26,16 @@ const ControlledInput = ({
       name={name}
       control={control}
       render={({ field: { onChange, onBlur, value } }) => {
-        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-          const inputValue = e.target.value;
-          
+        const handleChange = (value: string) => {
           if (isCurrency) {
             // Permite digitação livre enquanto edita
-            setRawValue(inputValue);
+            setRawValue(value);
           } else {
-            onChange(inputValue);
+            onChange(value);
           }
         };
 
-        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        const handleBlur = () => {
           if (isCurrency) {
             // Processa o valor apenas no blur
             const numericValue = currency(rawValue.replace(/[^\d,]/g, '').replace(',', '.'), {
@@ -49,14 +47,6 @@ const ControlledInput = ({
             
             onChange(numericValue);
             onBlur();
-            
-            // Formata para exibição
-            e.target.value = currency(numericValue, {
-              symbol: 'R$ ',
-              decimal: ',',
-              separator: '.',
-              precision: 2
-            }).format();
           } else {
             onBlur();
           }
@@ -75,7 +65,7 @@ const ControlledInput = ({
           <Input
             {...props}
             label={label}
-            onChange={handleChange}
+            onChange={(e) => handleChange(e.target.value)}
             onBlur={handleBlur}
             value={displayValue}
             status={supportText ? 'danger' : undefined}
