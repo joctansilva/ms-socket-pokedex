@@ -1,11 +1,3 @@
-import { Input, InputProps } from '@cvccorp-components/chui-react-components'; import { Control, Controller } from '@cvccorp-components/chui-react-form'; import React, { ReactNode } from 'react';
-
-export interface IControlledInput extends Omit<InputProps, 'defaultValue'> { name: string; control?: Control<any>; label: string; supportText?: ReactNode; }
-
-const ControlledInput = ({ name, control, label, supportText, ...props }: IControlledInput) => { return ( <Controller name={name} control={control} render={({ field: { onChange, onBlur, value } }) => { return ( <Input {...props} label={label} onChange={onChange} onBlur={onBlur} value={value || ''} status={supportText ? 'danger' : undefined} supportText={ <> {supportText} <span /> </> } /> ); }} /> ); };
-
-export default ControlledInput;
-
 import { Input, InputProps } from '@cvccorp-components/chui-react-components';
 import { Control, Controller } from '@cvccorp-components/chui-react-form';
 import React, { ReactNode } from 'react';
@@ -16,7 +8,7 @@ export interface IControlledInput extends Omit<InputProps, 'defaultValue'> {
   control?: Control<any>;
   label: string;
   supportText?: ReactNode;
-  isCurrency?: boolean; // New prop for currency formatting
+  isCurrency?: boolean;
 }
 
 const ControlledInput = ({
@@ -33,35 +25,50 @@ const ControlledInput = ({
       control={control}
       render={({ field: { onChange, onBlur, value } }) => {
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-          const inputValue = e.target.value;
+          let inputValue = e.target.value;
+          
           if (isCurrency) {
-            const rawValue = currency(inputValue.replace(/[^\d,-]/g, ''), {
-              decimal: ',',
-              separator: '.',
-              symbol: '',
-              fromCents: true,
-            }).value;
-            onChange(rawValue);
+            // Remove tudo exceto números e vírgula
+            inputValue = inputValue.replace(/[^\d,]/g, '');
+            // Substitui vírgula por ponto para o currency.js
+            const numericValue = parseFloat(inputValue.replace(',', '.')) || 0;
+            onChange(numericValue);
           } else {
             onChange(inputValue);
           }
         };
 
-        const displayValue = isCurrency
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+          if (isCurrency && value) {
+            // Formata o valor ao sair do campo
+            const formattedValue = currency(value, {
+              symbol: 'R$ ',
+              decimal: ',',
+              separator: '.',
+              precision: 2
+            }).format();
+            // Atualiza o valor formatado no campo (apenas visual)
+            e.target.value = formattedValue;
+          }
+          onBlur();
+        };
+
+        const displayValue = isCurrency && value !== undefined && value !== ''
           ? currency(value, {
               symbol: 'R$ ',
               decimal: ',',
-              fromCents: true,
+              separator: '.',
+              precision: 2
             }).format()
-          : value;
+          : value || '';
 
         return (
           <Input
             {...props}
             label={label}
             onChange={handleChange}
-            onBlur={onBlur}
-            value={displayValue || ''}
+            onBlur={handleBlur}
+            value={displayValue}
             status={supportText ? 'danger' : undefined}
             supportText={
               <>
@@ -77,12 +84,3 @@ const ControlledInput = ({
 };
 
 export default ControlledInput;
-
-          <ControlledInput
-            control={control}
-            name="vl_rental_fee"
-            label="Valor Aluguel Mensal"
-            disabled={false}
-            supportText={errors.vl_rental_fee && errors.vl_rental_fee.message}
-            isCurrency
-          />
