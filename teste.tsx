@@ -1,6 +1,6 @@
 import { Input, InputProps } from '@cvccorp-components/chui-react-components';
 import { Control, Controller } from '@cvccorp-components/chui-react-form';
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import currency from 'currency.js';
 
 export interface IControlledInput extends Omit<InputProps, 'defaultValue'> {
@@ -19,47 +19,56 @@ const ControlledInput = ({
   isCurrency,
   ...props
 }: IControlledInput) => {
+  const [rawValue, setRawValue] = useState('');
+
   return (
     <Controller
       name={name}
       control={control}
       render={({ field: { onChange, onBlur, value } }) => {
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-          let inputValue = e.target.value;
+          const inputValue = e.target.value;
           
           if (isCurrency) {
-            // Remove tudo exceto números e vírgula
-            inputValue = inputValue.replace(/[^\d,]/g, '');
-            // Substitui vírgula por ponto para o currency.js
-            const numericValue = parseFloat(inputValue.replace(',', '.')) || 0;
-            onChange(numericValue);
+            // Permite digitação livre enquanto edita
+            setRawValue(inputValue);
           } else {
             onChange(inputValue);
           }
         };
 
         const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-          if (isCurrency && value) {
-            // Formata o valor ao sair do campo
-            const formattedValue = currency(value, {
+          if (isCurrency) {
+            // Processa o valor apenas no blur
+            const numericValue = currency(rawValue.replace(/[^\d,]/g, '').replace(',', '.'), {
+              decimal: ',',
+              separator: '.',
+              symbol: '',
+              fromCents: false
+            }).value;
+            
+            onChange(numericValue);
+            onBlur();
+            
+            // Formata para exibição
+            e.target.value = currency(numericValue, {
               symbol: 'R$ ',
               decimal: ',',
               separator: '.',
               precision: 2
             }).format();
-            // Atualiza o valor formatado no campo (apenas visual)
-            e.target.value = formattedValue;
+          } else {
+            onBlur();
           }
-          onBlur();
         };
 
-        const displayValue = isCurrency && value !== undefined && value !== ''
-          ? currency(value, {
+        const displayValue = isCurrency 
+          ? rawValue || (value ? currency(value, {
               symbol: 'R$ ',
               decimal: ',',
               separator: '.',
               precision: 2
-            }).format()
+            }).format() : '')
           : value || '';
 
         return (
