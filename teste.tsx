@@ -1,9 +1,9 @@
 import { Input, InputProps } from '@cvccorp-components/chui-react-components';
 import { Control, Controller } from '@cvccorp-components/chui-react-form';
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import currency from 'currency.js';
 
-export interface IControlledInput extends Omit<InputProps, 'defaultValue' | 'onBlur' | 'onChange'> {
+export interface IControlledInput extends Omit<InputProps, 'defaultValue'> {
   name: string;
   control?: Control<any>;
   label: string;
@@ -19,53 +19,64 @@ const ControlledInput = ({
   isCurrency,
   ...props
 }: IControlledInput) => {
-  const [rawValue, setRawValue] = useState('');
+  const [displayValue, setDisplayValue] = useState('');
 
   return (
     <Controller
       name={name}
       control={control}
       render={({ field: { onChange, onBlur, value } }) => {
-        const handleChange = (value: string) => {
+        useEffect(() => {
+          if (isCurrency && value !== undefined) {
+            const formatted = currency(value, {
+              symbol: 'R$ ',
+              decimal: ',',
+              separator: '.',
+              precision: 2
+            }).format();
+            setDisplayValue(formatted);
+          }
+        }, [value, isCurrency]);
+
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const inputValue = e.target.value;
+          
           if (isCurrency) {
-            // Permite digitação livre enquanto edita
-            setRawValue(value);
+            // Permite digitação livre
+            setDisplayValue(inputValue);
           } else {
-            onChange(value);
+            onChange(inputValue);
           }
         };
 
         const handleBlur = () => {
           if (isCurrency) {
-            // Processa o valor apenas no blur
-            const numericValue = currency(rawValue.replace(/[^\d,]/g, '').replace(',', '.'), {
-              decimal: ',',
-              separator: '.',
-              symbol: '',
-              fromCents: false
-            }).value;
+            // Converte para número
+            const numericValue = currency(displayValue.replace(/[^\d,]/g, '')
+              .divide(100) // Converte centavos para reais
+              .value;
             
             onChange(numericValue);
             onBlur();
+            
+            // Formata para exibição
+            const formatted = currency(numericValue, {
+              symbol: 'R$ ',
+              decimal: ',',
+              separator: '.',
+              precision: 2
+            }).format();
+            setDisplayValue(formatted);
           } else {
             onBlur();
           }
         };
 
-        const displayValue = isCurrency 
-          ? rawValue || (value ? currency(value, {
-              symbol: 'R$ ',
-              decimal: ',',
-              separator: '.',
-              precision: 2
-            }).format() : '')
-          : value || '';
-
         return (
           <Input
             {...props}
             label={label}
-            onChange={(e) => handleChange(e.target.value)}
+            onChange={handleChange}
             onBlur={handleBlur}
             value={displayValue}
             status={supportText ? 'danger' : undefined}
