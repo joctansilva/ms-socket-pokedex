@@ -1,122 +1,65 @@
-Estou com um problema aqui
-
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import * as S from '../styles';
-import { Toast, Typography } from '@cvccorp-components/chui-react-components';
-import ControlledSelect from '@/presentation/components/ControlledSelect';
 import ControlledInput from '@/presentation/components/ControlledInput';
+import { Button } from '@cvccorp-components/chui-react-components';
+import { Search, Trash } from 'lucide-react';
 import { useForm } from '@cvccorp-components/chui-react-form';
-import { cardMachineSchema, TCardMachineSchema } from '@/validation';
-import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  ICreateCardMachine,
-  IGetUniqueCardMachine,
-  IUpdateCardMachine,
-} from '@/domain/usecases/cardMachineFees/cardMachine';
-import { ICardMachine, ICardMachineAcquirer } from '@/domain/models';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import ControlledSelect from '@/presentation/components/ControlledSelect';
+import { ICardMachineAcquirer } from '@/domain/models';
 import { makeRemoteGetAllCardMachineAcquirer } from '@/main/factories/usecases/cardMachineFees/cardMachineAcquirer';
-import ControlledInputDate from '@/presentation/components/ControlledInputDate';
-import { useCookie } from '@/presentation/hooks';
+import { TCardMachineFilterSchema } from '@/validation';
 
-interface IFormCardMachine {
-  getUnique: IGetUniqueCardMachine;
-  create: ICreateCardMachine;
-  update: IUpdateCardMachine;
-  editId?: number;
-  handleCloseModal: () => void;
-  tableData?: ICardMachine[];
+interface IFilterBusinessUnit {
+  loading: boolean;
 }
 
-const FormMachines = ({
-  getUnique,
-  create,
-  update,
-  editId,
-  handleCloseModal,
-  tableData,
-}: IFormCardMachine) => {
-  const {
-    handleSubmit,
-    control,
-    setValue,
-    formState: { errors },
-  } = useForm<TCardMachineSchema>({
-    resolver: zodResolver(cardMachineSchema),
-  });
-
-  const cookie = useCookie();
-  const queryClient = useQueryClient();
-
-  const { data: formData, isFetching: formLoading } = useQuery({
-    queryKey: [`formMachine-${editId}`, tableData],
-    queryFn: () => getUnique.get(Number(editId)),
-    enabled: editId !== undefined,
-  });
-
-  const { mutate: handleCreate, isPending: createLoading } = useMutation({
-    mutationFn: (data: ICardMachine) => create.create(data),
-    onSuccess: () => {
-      handleCloseModal();
-      queryClient.invalidateQueries({
-        queryKey: ['tableBankParameter'],
-      });
-      Toast.success({
-        title: 'Modelo de maquininha cadastrado com sucesso.',
-      });
-    },
-    onError: err => {
-      Toast.danger({
-        title: 'Erro ao cadastrar o modelo de maquininha.',
-        description: `${err}`,
-      });
-    },
-  });
-
-  const { mutate: handleUpdate, isPending: updateLoading } = useMutation({
-    mutationFn: (data: ICardMachine) => update.update(data),
-    onSuccess: () => {
-      handleCloseModal();
-      queryClient.invalidateQueries({
-        queryKey: ['tableBankParameter'],
-      });
-      Toast.success({
-        title: 'Modelo de maquininha atualizado com sucesso.',
-      });
-    },
-    onError: err => {
-      Toast.danger({
-        title: 'Erro ao atualizar o modelo de maquininha.',
-        description: `${err}`,
-      });
-    },
-  });
-
-  const onSubmit = (data: TCardMachineSchema) => {
-    const mutateData = {
-      ...data,
-      id: editId,
-      nm_user: cookie?.sub ?? 'CVC Brasil',
-      st_active: data.st_active as 'A' | 'I' | 'R',
-    };
-    if (editId) {
-      handleUpdate(mutateData);
-    } else {
-      handleCreate(mutateData);
-    }
-  };
-
-  useEffect(() => {
-    if (formData) {
-      Object.entries(formData).forEach(([name, value]: any) =>
-        setValue(name, value),
-      );
-    }
-  }, [formData]);
-
+const FilterMachines = ({ loading }: IFilterBusinessUnit) => {
   const [cardMachineAcquirer, setCardMachineAcquirer] = useState<
     ICardMachineAcquirer[]
   >([]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sqCardMachineBrand = searchParams.get('sq_card_machine_brand');
+  const dsModel = searchParams.get('ds_model');
+  const filtersParams = sqCardMachineBrand || dsModel;
+
+  const { handleSubmit, control } = useForm<TCardMachineFilterSchema>({
+    values: {
+      ds_model: dsModel ?? '',
+      sq_card_machine_brand: sqCardMachineBrand ?? '',
+    },
+  });
+
+  const onSubmit = ({
+    sq_card_machine_brand,
+    ds_model,
+  }: TCardMachineFilterSchema) => {
+    setSearchParams(state => {
+      if (sq_card_machine_brand) {
+        state.set('sq_card_machine_brand', sq_card_machine_brand);
+      } else {
+        state.delete('sq_card_machine_brand');
+      }
+      return state;
+    });
+    setSearchParams(state => {
+      if (ds_model) {
+        state.set('ds_model', ds_model);
+      } else {
+        state.delete('ds_model');
+      }
+      return state;
+    });
+  };
+
+  const onClear = () => {
+    setSearchParams(state => {
+      state.delete('sq_card_machine_brand');
+      state.delete('ds_model');
+      return state;
+    });
+  };
 
   useEffect(() => {
     makeRemoteGetAllCardMachineAcquirer()
@@ -132,103 +75,321 @@ const FormMachines = ({
   }));
 
   return (
+    <S.FilterForm onSubmit={handleSubmit(onSubmit)}>
+      <ControlledSelect
+        control={control}
+        name="sq_card_machine_brand"
+        label="Adquirente"
+        disabled={loading}
+        options={options}
+        placeholder="Selecione um adquirente"
+        value={undefined}
+      />
+      <ControlledInput
+        control={control}
+        disabled={loading}
+        name="ds_model"
+        label="Modelo"
+      />
+      <S.ButtonContainer>
+        <div>
+          <Button
+            type="submit"
+            variant="filled"
+            loading={loading}
+            color="secondary"
+            icon={<Search color="#fff" />}
+          >
+            Filtrar
+          </Button>
+        </div>
+        <div>
+          <Button
+            variant="outline"
+            color="secondary"
+            loading={loading}
+            icon={<Trash color={!filtersParams ? '#bdbdd0' : '#0a00b4'} />}
+            onClick={() => onClear()}
+            disabled={!filtersParams}
+          >
+            Limpar
+          </Button>
+        </div>
+      </S.ButtonContainer>
+    </S.FilterForm>
+  );
+};
+
+export default FilterMachines;
+
+import {
+  BadgeStatus,
+  Button,
+  Table,
+  TableProps,
+  Toast,
+  Typography,
+} from '@cvccorp-components/chui-react-components';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import * as S from '../styles';
+import FilterMachines from './filterMachines';
+import { Pencil, PlusCircle, Trash2 } from 'lucide-react';
+import { IRegisterMachines } from './registerMachines';
+import { ICardMachine } from '@/domain/models';
+import TableMenu from '@/presentation/components/TableMenu';
+import { formateCurrency } from '@/utils/functions/formateCurrency';
+import { useNewModal } from '@/presentation/hooks/useNewModal';
+import FormMachines from './formMachines';
+
+interface ITableCardMachines extends IRegisterMachines {}
+
+interface ITableMachinesRows {
+  id?: number;
+  sq_card_machine_brand: number;
+  ds_model: string;
+  vl_rental_fee: string;
+  st_active: JSX.Element;
+  dt_insert?: string;
+  action: JSX.Element;
+  nm_user: string;
+}
+
+const columns: TableProps<ITableMachinesRows>['columns'] = [
+  {
+    dataIndex: 'sq_card_machine_brand',
+    title: 'Marca',
+  },
+  {
+    dataIndex: 'ds_model',
+    title: 'Modelo',
+  },
+  {
+    dataIndex: 'vl_rental_fee',
+    title: 'Valor Aluguel Mensal',
+  },
+  {
+    dataIndex: 'st_active',
+    title: 'Status',
+  },
+  {
+    dataIndex: 'nm_user',
+    title: 'Atualizado por',
+  },
+  {
+    dataIndex: 'action',
+    title: '',
+  },
+];
+
+const TableMachines = ({
+  getAll,
+  getUnique,
+  create,
+  update,
+  remove,
+}: ITableCardMachines) => {
+  const [editId, setEditId] = useState<number | undefined>(undefined);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sqCardMachineBrand = searchParams.get('sq_card_machine_brand');
+  const dsModel = searchParams.get('ds_model');
+  const sqCardMachineBrandParams = sqCardMachineBrand
+    ? `&sq_card_machine_brand=${sqCardMachineBrand}`
+    : '';
+  const dsModelParams = dsModel ? `&ds_model=${dsModel}` : '';
+
+  const createModal = useNewModal();
+  const removeModal = useNewModal();
+
+  const queryClient = useQueryClient();
+
+  const { data: tableData, isFetching: tableLoading } = useQuery({
+    queryKey: ['tableMachines', sqCardMachineBrand, dsModel],
+    queryFn: () => getAll.get(`${sqCardMachineBrandParams}${dsModelParams}`),
+    placeholderData: keepPreviousData,
+  });
+
+  const { mutate: handleDelete, isPending: deleteLoading } = useMutation({
+    mutationFn: (id: number) => remove.delete(id),
+    onSuccess: () => {
+      removeModal.closeModal();
+      queryClient.invalidateQueries({ queryKey: ['tableMachines'] });
+      Toast.success({
+        title: 'Modelo de maquininha removido com sucesso.',
+      });
+    },
+    onError: err => {
+      Toast.danger({
+        title: 'Erro ao remover o modelo de maquininha.',
+        description: `${err}`,
+      });
+    },
+  });
+
+  let rows: ITableMachinesRows[] = [];
+
+  if (Array.isArray(tableData)) {
+    rows = tableData.map((data: ICardMachine) => {
+      const stActive = (
+        <BadgeStatus
+          color={
+            data.st_active === 'A'
+              ? 'success'
+              : data.st_active === 'I'
+                ? 'danger'
+                : 'warning'
+          }
+        >
+          {data.st_active === 'A'
+            ? 'Ativa'
+            : data.st_active === 'I'
+              ? 'Inativa'
+              : 'Devolvida'}
+        </BadgeStatus>
+      );
+
+      const handleOpenEditModal = () => {
+        setEditId(data.id);
+        createModal.openModal();
+      };
+
+      const handleOpenRemoveModal = () => {
+        setEditId(data.id);
+        removeModal.openModal();
+      };
+
+      const items = [
+        {
+          icon: <Pencil />,
+          tooltip: 'Editar modelo de maquininha',
+          onClick: handleOpenEditModal,
+          visible: true,
+        },
+        {
+          icon: <Trash2 color="#ff3746" />,
+          tooltip: 'Remover modelo de maquininha',
+          onClick: handleOpenRemoveModal,
+          visible: true,
+        },
+      ];
+      const action = <TableMenu items={items} />;
+
+      return {
+        ...data,
+        action: action,
+        vl_rental_fee: formateCurrency(data.vl_rental_fee),
+        st_active: stActive,
+      };
+    });
+  }
+
+  const handleOpenCreateModal = () => {
+    createModal.openModal();
+    setEditId(undefined);
+  };
+
+  const handleDeleteMachine = () => {
+    if (editId) {
+      handleDelete(editId);
+    }
+  };
+
+  return (
     <>
-      <Typography style={{ marginBottom: '24px' }} variant="subtitle">
-        Dados da maquininha
-      </Typography>{' '}
-      <div />
-      <form id="form-machine" onSubmit={handleSubmit(onSubmit)}>
-        <S.FormQuad>
-          <ControlledSelect
-            control={control}
-            name="sq_card_machine_brand"
-            label="Adquirente"
-            disabled={false}
-            options={options}
-            placeholder="Selecione um adquirente"
-            value={undefined}
-            supportText={
-              errors.sq_card_machine_brand &&
-              errors.sq_card_machine_brand.message
-            }
+      <S.CreateButtonContainer>
+        <Button
+          variant="outline"
+          color="secondary"
+          icon={<PlusCircle color="#0a00b4" />}
+          onClick={handleOpenCreateModal}
+          loading={tableLoading}
+        >
+          Cadastrar nova maquininha
+        </Button>
+      </S.CreateButtonContainer>
+      <Typography variant="subtitle" scale={2} weight="regular">
+        Filtros
+      </Typography>
+      <S.FilterContainer>
+        <FilterMachines loading={tableLoading} />
+      </S.FilterContainer>
+      <Table
+        rows={tableLoading ? [] : rows}
+        loading={tableLoading}
+        columns={columns}
+        striped
+      />
+
+      <createModal.Modal
+        modalTitle={editId ? 'Editar maquininha' : 'Cadastrar maquininha'}
+        height="450px"
+        width="800px"
+        footerContent={
+          <>
+            <Button
+              variant="text"
+              color="secondary"
+              onClick={createModal.closeModal}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" form="form-machine">
+              Confirmar
+            </Button>
+          </>
+        }
+        content={
+          <FormMachines
+            getUnique={getUnique}
+            create={create}
+            update={update}
+            editId={editId}
+            handleCloseModal={createModal.closeModal}
+            tableData={tableData}
           />
-          <ControlledInput
-            control={control}
-            name="ds_model"
-            label="Modelo"
-            disabled={false}
-            supportText={errors.ds_model && errors.ds_model.message}
-          />
-          <ControlledInput
-            control={control}
-            name="vl_rental_fee"
-            label="Valor Aluguel Mensal"
-            disabled={false}
-            supportText={errors.vl_rental_fee && errors.vl_rental_fee.message}
-          />
-          <ControlledInput
-            control={control}
-            name="ds_serial_number"
-            label="Número de Série"
-            disabled={false}
-            supportText={
-              errors.ds_serial_number && errors.ds_serial_number.message
-            }
-          />
-        </S.FormQuad>
-        <S.FormTriple>
-          <ControlledInputDate
-            control={control}
-            name="dt_billing_start"
-            label="Inicio do Contrato"
-            supportText={
-              errors.dt_billing_start && errors.dt_billing_start.message
-            }
-          />
-          <ControlledInputDate
-            control={control}
-            name="dt_billing_end"
-            label="Fim do Contrato"
-            supportText={errors.dt_billing_end && errors.dt_billing_end.message}
-          />
-          <ControlledSelect
-            control={control}
-            name="st_active"
-            label="Status"
-            disabled={false}
-            options={[
-              { label: 'Ativo', value: 'A' },
-              { label: 'Inativo', value: 'I' },
-              { label: 'Devolvido', value: 'R' },
-            ]}
-            supportText={errors.st_active && errors.st_active.message}
-          />
-        </S.FormTriple>
-      </form>
+        }
+      />
+      <removeModal.Modal
+        id="remove-modal"
+        modalTitle="Remover modelo de maquininha"
+        width="500px"
+        height="244px"
+        footerContent={
+          <>
+            <Button
+              onClick={removeModal.closeModal}
+              variant="text"
+              color="secondary"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => handleDeleteMachine()}
+              variant="filled"
+              color="danger"
+            >
+              Remover
+            </Button>
+          </>
+        }
+        content={
+          <>
+            <div>
+              Deseja realmente remover o modelo de maquininha? Essa ação não
+              pode ser desfeita.
+            </div>
+          </>
+        }
+      />
     </>
   );
 };
 
-export default FormMachines;
-
-Quando eu crio um novo registro, eu pego meu campo de date, e converto ele para esse formato
-
-  dt_billing_start: z.union([
-    z.string({ required_error: 'Esse campo não pode ficar vazio' }),
-    z.date().transform(date => format(date, 'dd/MM/yyyy')),
-  ]),
-  dt_billing_end: z.union([
-    z.string({ required_error: 'Esse campo não pode ficar vazio' }),
-    z.date().transform(date => format(date, 'dd/MM/yyyy')),
-  ]),
-
-até ai tudo certo e funcionando, eu consigo fazer meu POST, tranquilamente
-
-Quando eu vou editar, e salvo a ediçao, se eu nao mecho no campo de data edito somente outro valor
-
-meu output na chamada pUT vai dessaa forma 
-
-dt_billing_end : "2024-05-01"
-dt_billing_start : "2024-05-01"
-
-totalmente diferente do formato aceito no backend, mas se eu edito o campo data, ela volta ao normal 01/05/2024
+export default TableMachines;
